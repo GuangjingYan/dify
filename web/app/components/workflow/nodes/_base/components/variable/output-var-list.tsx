@@ -39,35 +39,36 @@ const OutputVarList: FC<Props> = ({
     }
   })
 
-  const { run: validateVarInput } = useDebounceFn((existingVariables: typeof list, newKey: string) => {
+  const { run: validateVarNotify } = useDebounceFn((message: string) => {
+    setToastHandler(Toast.notify({
+      type: 'error',
+      message,
+    }))
+  }, { wait: 500 })
+
+  const validateVarInput = (existingVariables: typeof list, newKey: string) => {
     const { isValid, errorKey, errorMessageKey } = checkKeys([newKey], true)
     if (!isValid) {
-      setToastHandler(Toast.notify({
-        type: 'error',
-        message: t(`appDebug.varKeyError.${errorMessageKey}` as any, { key: errorKey }),
-      }))
-      return
+      validateVarNotify(t(`appDebug.varKeyError.${errorMessageKey}` as any, { key: errorKey }))
+      return false
     }
     if (existingVariables.some(key => key.variable?.trim() === newKey.trim())) {
-      setToastHandler(Toast.notify({
-        type: 'error',
-        message: t('appDebug.varKeyError.keyAlreadyExists', { key: newKey }),
-      }))
+      validateVarNotify(t('appDebug.varKeyError.keyAlreadyExists', { key: newKey }))
     }
     else {
       toastHandler?.clear?.()
     }
-  }, { wait: 500 })
+    return true
+  }
 
   const handleVarNameChange = useCallback((index: number) => {
     return (e: React.ChangeEvent<HTMLInputElement>) => {
       const oldKey = list[index].variable
-
       replaceSpaceWithUnderscoreInVarNameInput(e.target)
       const newKey = e.target.value
-
       toastHandler?.clear?.()
-      validateVarInput(list.toSpliced(index, 1), newKey)
+      if (!validateVarInput(list.toSpliced(index, 1), newKey))
+        return
 
       const newOutputs = produce(outputs, (draft) => {
         draft[newKey] = draft[oldKey]
